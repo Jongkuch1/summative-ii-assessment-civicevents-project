@@ -4,6 +4,12 @@ A civic engagement web platform that connects residents with their local governm
 
 ---
 
+## Demo Video
+
+Watch the full demo on YouTube: [https://www.youtube.com/watch?v=hYP670bJFfc](https://www.youtube.com/watch?v=hYP670bJFfc)
+
+---
+
 ## Table of Contents
 
 1. [Tech Stack](#tech-stack)
