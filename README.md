@@ -347,4 +347,5 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 ## Contact
 
 Maintainer: [Jongkuch1](https://github.com/Jongkuch1)
-For questions, bugs, or feature requests, please [open an issue](https://github.com/Jongkuch1/summative-ii-assessment-civicevents-project/issues).
+For questions, bugs, or feature requests, please [open an issue](https://github.com/summative-ii-assessment-civicevents-project-Jongkuch1
+).
