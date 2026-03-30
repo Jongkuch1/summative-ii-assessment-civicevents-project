@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – New Service Request</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-xl mx-auto px-4 py-8">
+  <a href="service-requests.html" class="text-indigo-600 text-sm hover:underline mb-5 inline-block">← Back to Requests</a>
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+    <div class="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500"></div>
+    <div class="p-7">
+      <h1 class="text-xl font-extrabold text-slate-900 mb-1">Submit a Service Request</h1>
+      <p class="text-sm text-slate-400 mb-6">Report an issue or request a civic service in your community.</p>
+
+      <form id="sr-form" novalidate class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide" for="title">Title</label>
+          <input id="title" type="text" required placeholder="e.g. Broken street light on Main St."
+            class="w-full border border-slate-200 bg-slate-50 hover:border-indigo-300 focus:border-indigo-500 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-indigo-100"/>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide" for="category">Category</label>
+          <select id="category"
+            class="w-full border border-slate-200 bg-slate-50 hover:border-indigo-300 focus:border-indigo-500 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:ring-2 focus:ring-indigo-100">
+            <option value="general">General</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="sanitation">Sanitation</option>
+            <option value="safety">Safety</option>
+            <option value="utilities">Utilities</option>
+            <option value="parks">Parks &amp; Recreation</option>
+            <option value="transport">Transport</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide" for="description">Description</label>
+          <textarea id="description" rows="4" placeholder="Describe the issue in detail…"
+            class="w-full border border-slate-200 bg-slate-50 hover:border-indigo-300 focus:border-indigo-500 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:ring-2 focus:ring-indigo-100 resize-none"></textarea>
+        </div>
+
+        <div id="form-error" class="hidden bg-rose-50 text-rose-600 text-sm p-3 rounded-xl border border-rose-100"></div>
+
+        <button type="submit" id="submit-btn"
+          class="btn-gradient w-full py-3 rounded-xl font-bold text-sm text-white shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
+          Submit Request
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth(); // Role guard: must be logged in
+  renderNavbar();
+
+  $('#sr-form').on('submit', function(e) {
+    e.preventDefault();
+    const title       = $('#title').val().trim();
+    const category    = $('#category').val();
+    const description = $('#description').val().trim();
+
+    if (!title) {
+      $('#form-error').text('Title is required.').removeClass('hidden');
+      return;
+    }
+    $('#form-error').addClass('hidden');
+    $('#submit-btn').prop('disabled', true).html('Submitting… <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>');
+
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const requests = JSON.parse(localStorage.getItem('civic_service_requests') || '[]');
+      const newRequest = {
+        id: Date.now(),
+        title,
+        category,
+        description,
+        status: 'pending',
+        user_id: user.id || null,
+        user: { full_name: user.full_name || 'You', email: user.email || '' },
+        created_at: new Date().toISOString(),
+      };
+      requests.push(newRequest);
+      localStorage.setItem('civic_service_requests', JSON.stringify(requests));
+      showToast('Request submitted!', 'success');
+      setTimeout(() => window.location.href = `service-request-detail.html?id=${newRequest.id}`, 1200);
+    } catch (err) {
+      $('#form-error').text('Submission failed. Please try again.').removeClass('hidden');
+      $('#submit-btn').prop('disabled', false).html('Submit Request <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>');
+    }
+  });
+
+  renderFooter();
+</script>
+</body>
+</html>

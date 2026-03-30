@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – Promo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-3xl mx-auto px-4 py-8">
+  <a href="promos.html" class="text-blue-600 text-sm hover:underline mb-4 inline-block">← Back to Promos</a>
+  <div id="promo-content">
+    <div class="animate-pulse space-y-4">
+      <div class="h-64 bg-gray-200 rounded-xl"></div>
+      <div class="h-6 bg-gray-200 rounded w-2/3"></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  renderNavbar();
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) window.location.href = 'promos.html';
+
+  apiRequest('GET', `/promos/${id}`).then(data => {
+    const p = data.data || data;
+    const videoSrc = p.video_url ? (p.video_url.startsWith('http') ? p.video_url : `${BASE_URL}${p.video_url}`) : '';
+
+    // Build a WebVTT blob URL from caption_text so <track src=""> works correctly
+    let captionBlobUrl = '';
+    if (p.caption_text) {
+      // Wrap plain text as a single WebVTT cue spanning the full video duration
+      const vtt = 'WEBVTT\n\n00:00:00.000 --> 99:59:59.000\n' + p.caption_text;
+      const blob = new Blob([vtt], { type: 'text/vtt' });
+      captionBlobUrl = URL.createObjectURL(blob);
+    }
+
+    $('#promo-content').html(`
+      <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex justify-between items-start gap-4 mb-4">
+          <h1 class="text-xl font-bold text-gray-800">${p.title}</h1>
+          ${isAdmin() ? `<div class="flex gap-2 shrink-0">
+            <a href="promo-form.html?id=${p.id}" class="bg-yellow-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-yellow-600">Edit</a>
+            <button id="delete-btn" class="bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-red-600">Delete</button>
+          </div>` : ''}
+        </div>
+        ${videoSrc ? `
+        <div class="mb-4 rounded-xl overflow-hidden bg-black">
+          <video controls preload="metadata" loading="lazy" aria-label="Promo video: ${p.title}" class="w-full max-h-96">
+            <source src="${videoSrc}" type="video/mp4"/>
+            <source src="${videoSrc}" type="video/webm"/>
+            ${captionBlobUrl ? `<track kind="captions" src="${captionBlobUrl}" srclang="en" label="English" default/>` : ''}
+            <p class="text-white p-4 text-sm">Your browser does not support video. <a href="${videoSrc}" class="underline text-blue-300">Download video</a></p>
+          </video>
+        </div>` : '<p class="text-gray-400 text-sm mb-4">No video available.</p>'}
+        <p class="text-gray-700 leading-relaxed">${p.description || ''}</p>
+        ${p.caption_text ? `<div class="bg-gray-50 rounded-lg p-4 mt-4">
+          <h2 class="font-semibold text-gray-700 mb-2 text-sm">Captions / Transcript</h2>
+          <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">${p.caption_text}</p>
+        </div>` : ''}
+      </div>`);
+
+    $('#delete-btn').on('click', function() {
+      confirmModal('Delete this promo?').then(confirmed => {
+        if (!confirmed) return;
+        apiRequest('DELETE', `/promos/${id}`).then(() => {
+          showToast('Deleted.');
+          setTimeout(() => window.location.href = 'promos.html', 1000);
+        }).catch(err => showToast(err.message, 'error'));
+      });
+    });
+  }).catch(err => {
+    $('#promo-content').html(`<p class="text-red-500">${err.message || 'Failed to load.'}</p>`);
+  });
+  renderFooter();
+</script>
+</body>
+</html>

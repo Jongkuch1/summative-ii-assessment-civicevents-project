@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – Announcement</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-2xl mx-auto px-4 py-8">
+  <a href="announcements.html" class="text-blue-600 text-sm hover:underline mb-4 inline-block">← Back to Announcements</a>
+  <div id="ann-content">
+    <div class="animate-pulse space-y-4">
+      <div class="h-6 bg-gray-200 rounded w-2/3"></div>
+      <div class="h-12 bg-gray-200 rounded"></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  renderNavbar();
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) window.location.href = 'announcements.html';
+
+  apiRequest('GET', `/announcements/${id}`).then(data => {
+    const a = data.data || data;
+    const audioSrc = a.audio_url ? (a.audio_url.startsWith('http') ? a.audio_url : `${BASE_URL}${a.audio_url}`) : '';
+    $('#ann-content').html(`
+      <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex justify-between items-start gap-4 mb-4">
+          <div>
+            <h1 class="text-xl font-bold text-gray-800">${a.title}</h1>
+            <p class="text-xs text-gray-400 mt-1">${formatDate(a.created_at)} · ${a.duration_seconds ? formatDuration(a.duration_seconds) : ''}</p>
+          </div>
+          ${isAdmin() ? `<div class="flex gap-2 shrink-0">
+            <a href="announcement-form.html?id=${a.id}" class="bg-yellow-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-yellow-600">Edit</a>
+            <button id="delete-btn" class="bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-red-600">Delete</button>
+          </div>` : ''}
+        </div>
+        ${audioSrc ? `
+        <div class="mb-4">
+          <audio controls aria-label="Announcement audio: ${a.title}" class="w-full rounded-lg">
+            <source src="${audioSrc}" type="audio/mpeg"/>
+            <source src="${audioSrc}" type="audio/ogg"/>
+            <p class="text-sm text-gray-500">Your browser does not support audio playback. <a href="${audioSrc}" class="text-blue-600 underline">Download audio</a></p>
+          </audio>
+        </div>` : '<p class="text-gray-400 text-sm mb-4">No audio available in demo mode. Audio plays when connected to the backend.</p>'}
+        ${a.transcript ? `<div class="bg-gray-50 rounded-lg p-4 mt-4">
+          <h2 class="font-semibold text-gray-700 mb-2 text-sm">Transcript</h2>
+          <p class="text-sm text-gray-600 leading-relaxed">${a.transcript}</p>
+        </div>` : ''}
+      </div>`);
+
+    $('#delete-btn').on('click', function() {
+      confirmModal('Delete this announcement?').then(confirmed => {
+        if (!confirmed) return;
+        apiRequest('DELETE', `/announcements/${id}`).then(() => {
+          showToast('Deleted.');
+          setTimeout(() => window.location.href = 'announcements.html', 1000);
+        }).catch(err => showToast(err.message, 'error'));
+      });
+    });
+  }).catch(err => {
+    $('#ann-content').html(`<p class="text-red-500">${err.message || 'Failed to load.'}</p>`);
+  });
+  renderFooter();
+</script>
+</body>
+</html>

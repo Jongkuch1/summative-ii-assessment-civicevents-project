@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – My Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold text-gray-800 mb-6">My Profile</h1>
+  <div class="bg-white rounded-xl shadow p-6">
+    <div id="profile-info" class="mb-6">
+      <div class="animate-pulse space-y-3">
+        <div class="h-5 bg-gray-200 rounded w-1/2"></div>
+        <div class="h-4 bg-gray-200 rounded w-2/3"></div>
+      </div>
+    </div>
+    <form id="profile-form" novalidate class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="full_name">Full Name</label>
+        <input id="full_name" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="email">Email</label>
+        <input id="email" type="email" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-500">
+        Role and account status cannot be changed here.
+      </div>
+      <div id="form-error" class="hidden text-red-600 text-sm bg-red-50 p-2 rounded-lg"></div>
+      <button type="submit" id="submit-btn" class="bg-blue-700 text-white px-6 py-2.5 rounded-lg hover:bg-blue-800 transition text-sm font-medium">Update Profile</button>
+    </form>
+  </div>
+
+  <!-- Password Change -->
+  <div class="bg-white rounded-xl shadow p-6 mt-6">
+    <h2 class="font-bold text-gray-800 mb-4">Change Password</h2>
+    <form id="pw-form" novalidate class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="current_password">Current Password</label>
+        <input id="current_password" type="password" placeholder="••••••••"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="new_password">New Password</label>
+        <div class="relative">
+          <input id="new_password" type="password" placeholder="••••••••"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          <button type="button" id="toggle-new-pw" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 text-xs font-semibold">Show</button>
+        </div>
+        <!-- Strength bar -->
+        <div class="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div id="pw-strength-fill" class="h-full rounded-full w-0 transition-all duration-300"></div>
+        </div>
+        <p id="pw-strength-label" class="text-xs text-slate-400 mt-0.5"></p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="confirm_password">Confirm New Password</label>
+        <input id="confirm_password" type="password" placeholder="••••••••"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div id="pw-error" class="hidden text-red-600 text-sm bg-red-50 p-2 rounded-lg"></div>
+      <button type="submit" id="pw-submit-btn" class="bg-blue-700 text-white px-6 py-2.5 rounded-lg hover:bg-blue-800 transition text-sm font-medium">Change Password</button>
+    </form>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  renderNavbar();
+
+  const user = getUser();
+  apiRequest('GET', `/users/${user.id}`).then(data => {
+    const u = data.data || data;
+    $('#profile-info').html(`
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold" aria-hidden="true">${u.full_name[0].toUpperCase()}</div>
+        <div>
+          <p class="font-bold text-gray-800">${u.full_name}</p>
+          <p class="text-sm text-gray-500">${u.email}</p>
+          <span class="text-xs px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${u.role}</span>
+        </div>
+      </div>`);
+    $('#full_name').val(u.full_name);
+    $('#email').val(u.email);
+  }).catch(err => showToast(err.message, 'error'));
+
+  $('#profile-form').on('submit', function(e) {
+    e.preventDefault();
+    const full_name = $('#full_name').val().trim();
+    const email = $('#email').val().trim();
+    if (!full_name || !email) return $('#form-error').text('Name and email are required.').removeClass('hidden');
+    $('#form-error').addClass('hidden');
+    $('#submit-btn').prop('disabled', true).text('Saving…');
+
+    apiRequest('PUT', `/users/${user.id}`, { full_name, email })
+      .then(data => {
+        const updated = data.data || data;
+        const stored = getUser();
+        const persistent = !!localStorage.getItem('token');
+        saveAuth(getToken(), { ...stored, full_name: updated.full_name || full_name, email: updated.email || email }, persistent);
+        showToast('Profile updated!');
+        $('#submit-btn').prop('disabled', false).text('Update Profile');
+      })
+      .catch(err => {
+        if (err.status === 409) {
+          $('#form-error').text('This email is already in use.').removeClass('hidden');
+        } else {
+          $('#form-error').text(err.message || 'Update failed.').removeClass('hidden');
+        }
+        $('#submit-btn').prop('disabled', false).text('Update Profile');
+      });
+  });
+  // Password strength meter
+  function pwStrength(pw) {
+    let s = 0;
+    if (pw.length >= 8)          s++;
+    if (/[A-Z]/.test(pw))        s++;
+    if (/[a-z]/.test(pw))        s++;
+    if (/[0-9]/.test(pw))        s++;
+    if (/[^A-Za-z0-9]/.test(pw)) s++;
+    return s;
+  }
+  const pwColors = ['bg-rose-400','bg-rose-400','bg-amber-400','bg-yellow-400','bg-emerald-500'];
+  const pwLabels = ['Very weak','Weak','Fair','Good','Strong'];
+  const pwLabelColors = ['text-rose-500','text-rose-500','text-amber-500','text-yellow-600','text-emerald-600'];
+
+  $('#new_password').on('input', function() {
+    const val = $(this).val();
+    const s = pwStrength(val);
+    $('#pw-strength-fill').css('width', (s / 5 * 100) + '%')
+      .removeClass('bg-rose-400 bg-amber-400 bg-yellow-400 bg-emerald-500')
+      .addClass(pwColors[s - 1] || 'bg-rose-400');
+    $('#pw-strength-label').text(val ? pwLabels[s - 1] || '' : '')
+      .removeClass('text-rose-500 text-amber-500 text-yellow-600 text-emerald-600')
+      .addClass(val ? pwLabelColors[s - 1] || '' : '');
+  });
+
+  $('#toggle-new-pw').on('click', function() {
+    const inp = $('#new_password');
+    const isText = inp.attr('type') === 'text';
+    inp.attr('type', isText ? 'password' : 'text');
+    $(this).text(isText ? 'Show' : 'Hide');
+  });
+
+  $('#pw-form').on('submit', function(e) {
+    e.preventDefault();
+    const current_password = $('#current_password').val();
+    const new_password     = $('#new_password').val();
+    const confirm          = $('#confirm_password').val();
+
+    if (!current_password || !new_password || !confirm) {
+      return $('#pw-error').text('All password fields are required.').removeClass('hidden');
+    }
+    if (new_password !== confirm) {
+      return $('#pw-error').text('New passwords do not match.').removeClass('hidden');
+    }
+    if (pwStrength(new_password) < 5) {
+      return $('#pw-error').text('New password must be at least 8 characters with uppercase, lowercase, number, and symbol.').removeClass('hidden');
+    }
+    $('#pw-error').addClass('hidden');
+    $('#pw-submit-btn').prop('disabled', true).text('Changing…');
+
+    apiRequest('PATCH', `/users/${user.id}/password`, { current_password, new_password })
+      .then(() => {
+        showToast('Password changed!');
+        $('#pw-form')[0].reset();
+        $('#pw-strength-fill').css('width', '0%');
+        $('#pw-strength-label').text('');
+        $('#pw-submit-btn').prop('disabled', false).text('Change Password');
+      })
+      .catch(err => {
+        $('#pw-error').text(err.message || 'Failed to change password.').removeClass('hidden');
+        $('#pw-submit-btn').prop('disabled', false).text('Change Password');
+      });
+  });
+
+  renderFooter();
+</script>
+</body>
+</html>

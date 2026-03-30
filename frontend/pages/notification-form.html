@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – Broadcast Notification</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<div class="flex flex-1 max-w-7xl w-full mx-auto px-4 py-8 gap-6">
+  <!-- Admin Sidebar -->
+  <aside class="w-52 shrink-0 hidden md:block" aria-label="Admin sidebar">
+    <nav class="bg-white rounded-xl shadow p-4 space-y-1 text-sm font-medium sticky top-4">
+      <a href="dashboard.html"         class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">Dashboard</a>
+      <a href="events.html"            class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">Events</a>
+      <a href="announcements.html"     class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">Announcements</a>
+      <a href="promos.html"            class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">Promos</a>
+      <a href="service-requests.html"  class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">Service Requests</a>
+      <a href="users.html"             class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">Users</a>
+      <a href="notification-form.html" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white">Broadcast</a>
+    </nav>
+  </aside>
+
+  <main class="flex-1 max-w-xl space-y-6">
+    <h1 class="text-2xl font-bold text-gray-800">Broadcast Notification</h1>
+
+    <!-- Broadcast form -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <form id="notif-form" novalidate class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="title">Title *</label>
+          <input id="title" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="message">Message *</label>
+          <textarea id="message" rows="4" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="type">Type</label>
+          <select id="type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="info">Info</option>
+            <option value="success">Success</option>
+            <option value="warning">Warning</option>
+            <option value="error">Error</option>
+          </select>
+        </div>
+        <div id="form-error" class="hidden text-red-600 text-sm bg-red-50 p-2 rounded-lg"></div>
+        <button type="submit" id="submit-btn" class="btn-gradient px-6 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md shadow-indigo-200">Send Notification</button>
+      </form>
+    </div>
+
+    <!-- Admin: manage / delete notifications -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-gray-800">Manage Notifications</h2>
+        <button type="button" onclick="loadNotifs()" class="text-xs text-indigo-600 hover:underline">Refresh</button>
+      </div>
+      <div id="notif-list" class="space-y-2 text-sm">
+        <p class="text-gray-400">Loading…</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="footer-container"></div>
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  requireAdmin(); // Role guard: admin only
+  renderNavbar();
+
+  $('#notif-form').on('submit', function(e) {
+    e.preventDefault();
+    const title = $('#title').val().trim();
+    const message = $('#message').val().trim();
+    const type = $('#type').val();
+    if (!title || !message) return $('#form-error').text('Title and message are required.').removeClass('hidden');
+    $('#form-error').addClass('hidden');
+    $('#submit-btn').prop('disabled', true).text('Sending…');
+
+    apiRequest('POST', '/notifications', { title, message, type })
+      .then(() => {
+        showToast('Notification sent to all active users!');
+        $('#notif-form')[0].reset();
+        $('#submit-btn').prop('disabled', false).text('Send Notification');
+        loadNotifs(); // refresh list after broadcast
+      })
+      .catch(err => {
+        $('#form-error').text(err.message || 'Failed to send.').removeClass('hidden');
+        $('#submit-btn').prop('disabled', false).text('Send Notification');
+      });
+  });
+
+  // Load and render the admin's notification list with delete controls
+  function loadNotifs() {
+    $('#notif-list').html('<p class="text-gray-400 text-sm">Loading…</p>');
+    apiRequest('GET', '/notifications').then(data => {
+      const items = data.data || data || [];
+      if (!items.length) {
+        $('#notif-list').html('<p class="text-gray-400 text-sm">No notifications yet.</p>');
+        return;
+      }
+      const typeColors = { info: 'bg-blue-100 text-blue-700', success: 'bg-green-100 text-green-700', warning: 'bg-yellow-100 text-yellow-700', error: 'bg-red-100 text-red-700' };
+      $('#notif-list').html(items.map(n => `
+        <div class="flex items-start justify-between gap-3 py-2 border-b border-gray-100 last:border-0" id="notif-row-${n.id}">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium ${typeColors[n.type] || typeColors.info}">${n.type}</span>
+              <span class="font-medium text-gray-800 truncate">${n.title}</span>
+            </div>
+            <p class="text-gray-500 text-xs truncate">${n.message}</p>
+            <p class="text-gray-400 text-xs mt-0.5">${new Date(n.created_at).toLocaleString()}</p>
+          </div>
+          <button type="button" onclick="deleteNotif(${n.id})"
+            class="shrink-0 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition"
+            aria-label="Delete notification ${n.id}">Delete</button>
+        </div>`).join(''));
+    }).catch(() => {
+      $('#notif-list').html('<p class="text-red-500 text-sm">Failed to load notifications.</p>');
+    });
+  }
+
+  // Admin: delete a single notification
+  function deleteNotif(id) {
+    confirmModal('Delete this notification?').then(confirmed => {
+      if (!confirmed) return;
+    // Role guard: only admins reach this page
+      apiRequest('DELETE', `/notifications/${id}`)
+        .then(() => {
+          $(`#notif-row-${id}`).fadeOut(200, function() { $(this).remove(); });
+          showToast('Notification deleted.');
+        })
+        .catch(err => showToast(err.message || 'Failed to delete.', 'error'));
+    });
+  }
+
+  loadNotifs();
+  renderFooter();
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – Announcements</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-5xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">Announcements</h1>
+    <!-- Admin only create button -->
+    <a id="create-ann-btn" href="announcement-form.html" class="hidden bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition">+ New Announcement</a>
+  </div>
+  <div id="ann-list" class="space-y-4"></div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  renderNavbar();
+  if (isAdmin()) $('#create-ann-btn').removeClass('hidden'); // Role guard
+
+  function loadAnnouncements() {
+    $('#ann-list').html(skeletonCard(4));
+    apiRequest('GET', '/announcements').then(data => {
+      const items = (data.data || data || []).filter(a => isAdmin() || a.published);
+      if (!items.length) { $('#ann-list').html('<p class="text-gray-400 text-center py-12">No announcements.</p>'); return; }
+      const html = items.map(a => `
+        <article class="bg-white rounded-xl shadow p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex-1">
+            <h2 class="font-bold text-gray-800">${a.title}</h2>
+            <p class="text-xs text-gray-400 mt-1">🕐 ${a.duration_seconds ? formatDuration(a.duration_seconds) : '—'} · ${formatDateShort(a.created_at)}</p>
+            ${!a.published ? '<span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Draft</span>' : ''}
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <a href="announcement-detail.html?id=${a.id}" class="bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-800 transition">Listen</a>
+            ${isAdmin() ? `<a href="announcement-form.html?id=${a.id}" class="bg-yellow-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-yellow-600 transition">Edit</a>
+            <button class="delete-ann bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-red-600 transition" data-id="${a.id}">Delete</button>` : ''}
+          </div>
+        </article>`).join('');
+      $('#ann-list').html(html);
+
+      $('.delete-ann').on('click', function() {
+        const id = $(this).data('id');
+        confirmModal('Delete this announcement?').then(confirmed => {
+          if (!confirmed) return;
+          apiRequest('DELETE', `/announcements/${id}`).then(() => { showToast('Deleted.'); loadAnnouncements(); }).catch(err => showToast(err.message, 'error'));
+        });
+      });
+    }).catch(err => {
+      $('#ann-list').html(`<p class="text-red-500">${err.message} <button onclick="loadAnnouncements()" class="underline text-blue-600">Retry</button></p>`);
+    });
+  }
+
+  loadAnnouncements();
+  renderFooter();
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – Event Detail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-4xl mx-auto px-4 py-8">
+  <a href="events.html" class="text-blue-600 text-sm hover:underline mb-4 inline-block">← Back to Events</a>
+  <div id="event-content" aria-live="polite" aria-busy="true">
+    <div class="animate-pulse space-y-4">
+      <div class="h-64 bg-gray-200 rounded-xl"></div>
+      <div class="h-6 bg-gray-200 rounded w-2/3"></div>
+      <div class="h-4 bg-gray-200 rounded w-1/3"></div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  renderNavbar();
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) window.location.href = 'events.html';
+
+  let myRegistrationId = null;
+
+  function loadEvent() {
+    Promise.all([
+      apiRequest('GET', `/events/${id}`),
+      apiRequest('GET', `/event-registrations/my-registrations`).catch(() => ({ data: [] }))
+    ]).then(([evData, regData]) => {
+      const e = evData.data || evData;
+      const myRegs = regData.data || regData || [];
+      const myReg = myRegs.find(r => String(r.event_id) === String(id));
+      myRegistrationId = myReg ? myReg.id : null;
+
+      const img = e.metadata?.image_url
+        ? `<img src="${BASE_URL}${e.metadata.image_url}" alt="${e.title}" class="w-full h-72 object-cover rounded-xl mb-6" loading="lazy"/>`
+        : `<div class="w-full h-48 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-xl flex items-center justify-center mb-6" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10v11M20 10v11M8 14v3m4-3v3m4-3v3"/></svg></div>`;
+
+      // Role guard: register/cancel only for non-admins
+      const regBtn = !isAdmin() ? (myReg
+        ? `<button id="cancel-reg-btn" class="bg-red-500 text-white px-5 py-2 rounded-lg hover:bg-red-600 transition">Cancel Registration</button>`
+        : `<button id="register-btn" class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition">Register for Event</button>`)
+        : '';
+
+      // Role guard: edit/delete only for admins
+      const adminBtns = isAdmin() ? `
+        <a href="event-form.html?id=${e.id}" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition text-sm">Edit</a>
+        <button id="delete-event-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition text-sm">Delete</button>` : '';
+
+      $('#event-content').html(`
+        ${img}
+        <div class="bg-white rounded-xl shadow p-6 mb-6">
+          <div class="flex flex-wrap justify-between items-start gap-4">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-800 mb-2">${e.title}</h1>
+              <p class="text-sm text-gray-500">${formatDate(e.starts_at)} – ${formatDate(e.ends_at)}</p>
+              <p class="text-sm text-gray-500 mt-1">${e.location || 'TBD'}
+                ${e.location ? `<a href="https://maps.google.com/?q=${encodeURIComponent(e.location)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline ml-2 text-xs">View on Map ↗</a>` : ''}
+              </p>
+            </div>
+            <div class="flex gap-2 flex-wrap">${regBtn}${adminBtns}</div>
+          </div>
+          <p class="text-gray-700 mt-4 leading-relaxed">${e.description || ''}</p>
+        </div>
+
+        <!-- Registrants (admin only) -->
+        ${isAdmin() ? `<div class="bg-white rounded-xl shadow p-6 mb-6">
+          <h2 class="font-bold text-gray-800 mb-3">Registrants</h2>
+          <div id="registrants-list" class="text-sm text-gray-600" aria-live="polite" aria-label="List of registrants">Loading…</div>
+        </div>` : ''}
+
+        <!-- Feedback section -->
+        <div class="bg-white rounded-xl shadow p-6">
+          <h2 class="font-bold text-gray-800 mb-1">Feedback</h2>
+          <p id="avg-rating" class="text-sm text-gray-500 mb-4" aria-live="polite"></p>
+          <div id="feedback-list" class="space-y-3 mb-6 text-sm text-gray-600" aria-live="polite" aria-label="Feedback list">Loading…</div>
+          <h3 class="font-semibold text-gray-700 mb-3">Leave Feedback</h3>
+          <form id="feedback-form" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1" for="rating">Rating (1–5)</label>
+              <select id="rating" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select…</option>
+                ${[1,2,3,4,5].map(n => `<option value="${n}">${n} star${n > 1 ? 's' : ''}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="block text-sm font-medium text-gray-700" for="comment">Comment <span class="text-gray-400 font-normal">(optional)</span></label>
+                <span id="comment-count" class="text-xs text-gray-400" aria-live="polite">0/500</span>
+              </div>
+              <textarea id="comment" rows="3" maxlength="500" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Share your experience…" aria-describedby="comment-count"></textarea>
+            </div>
+            <button type="submit" class="bg-blue-700 text-white px-5 py-2 rounded-lg hover:bg-blue-800 transition text-sm">Submit Feedback</button>
+          </form>
+        </div>
+      `);
+
+      $('#register-btn').on('click', function() {
+        $(this).prop('disabled', true).text('Registering…');
+        apiRequest('POST', '/event-registrations/register', { event_id: id })
+          .then(() => { showToast('Registered!'); loadEvent(); })
+          .catch(err => { showToast(err.message || 'Failed.', 'error'); $(this).prop('disabled', false).text('Register for Event'); });
+      });
+
+      $('#cancel-reg-btn').on('click', function() {
+        $(this).prop('disabled', true).text('Cancelling…');
+        apiRequest('POST', '/event-registrations/cancel', { event_id: id })
+          .then(() => { showToast('Registration cancelled.'); loadEvent(); })
+          .catch(err => { showToast(err.message || 'Failed.', 'error'); $(this).prop('disabled', false).text('Cancel Registration'); });
+      });
+
+      $('#delete-event-btn').on('click', function() {
+        confirmModal('Delete this event?').then(confirmed => {
+          if (!confirmed) return;
+          apiRequest('DELETE', `/events/${id}`).then(() => {
+            showToast('Event deleted.');
+            setTimeout(() => window.location.href = 'events.html', 1000);
+          }).catch(err => showToast(err.message, 'error'));
+        });
+      });
+
+      $('#event-content').attr('aria-busy', 'false');
+      if (isAdmin()) loadRegistrants();
+      loadFeedback();
+    }).catch(err => {
+      $('#event-content').attr('aria-busy', 'false').html(`<p class="text-red-500" role="alert">${err.message || 'Failed to load event.'} <a href="events.html" class="underline text-blue-600">Back to Events</a></p>`);
+    });
+  }
+
+  function loadRegistrants() {
+    apiRequest('GET', `/event-registrations/event/${id}/attendees`).then(data => {
+      const regs = data.data || data || [];
+      if (!regs.length) { $('#registrants-list').text('No registrants yet.'); return; }
+      $('#registrants-list').html(`<ul class="list-disc list-inside space-y-1">${regs.map(r => `<li>${r.user?.full_name || r.user_id} — ${formatDateShort(r.created_at)}</li>`).join('')}</ul>`);
+    }).catch(() => $('#registrants-list').text('Could not load registrants.'));
+  }
+
+  function loadFeedback() {
+    const feedbackPromise = isAdmin()
+      ? apiRequest('GET', `/event-feedback/event/${id}`)
+      : apiRequest('GET', `/event-feedback/my-feedback`);
+    feedbackPromise.then(data => {
+      let items = data.data || data || [];
+      // For regular users, my-feedback returns all their feedback — filter to this event
+      if (!isAdmin()) items = items.filter(f => String(f.event_id) === String(id));
+      if (!items.length) { $('#feedback-list').text('No feedback yet.'); $('#avg-rating').text(''); }
+      else {
+        const avg = (items.reduce((s, f) => s + (f.rating || 0), 0) / items.length).toFixed(1);
+        $('#avg-rating').text(`Average rating: ${avg}/5 (${items.length} reviews)`);
+        $('#feedback-list').html(items.map(f => {
+          const stars = '★'.repeat(f.rating || 0) + '☆'.repeat(5 - (f.rating || 0));
+          return `
+          <article class="border rounded-lg p-3 bg-gray-50" aria-label="Feedback from ${f.user?.full_name || 'User'}">
+            <div class="flex justify-between text-xs text-gray-400 mb-1">
+              <span class="font-medium text-gray-700">${f.user?.full_name || 'User'}</span>
+              <span>${formatDateShort(f.created_at)}</span>
+            </div>
+            <p class="text-yellow-500 text-sm" aria-label="${f.rating || 0} out of 5 stars">${stars}</p>
+            <p class="text-gray-700 mt-1 text-sm">${f.comment || ''}</p>
+          </article>`;
+        }).join(''));
+      }
+
+      // Duplicate feedback prevention: hide form if current user already submitted
+      const currentUser = getUser();
+      const alreadySubmitted = items.some(f => currentUser && Number(f.user_id) === Number(currentUser.id));
+      if (alreadySubmitted) {
+        $('#feedback-form').replaceWith(`<p class="text-sm text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg p-3">You have already submitted feedback for this event.</p>`);
+      }
+    }).catch(() => $('#feedback-list').text('Could not load feedback.'));
+  }
+
+  // Character counter for comment field
+  $(document).on('input', '#comment', function() {
+    $('#comment-count').text(`${$(this).val().length}/500`);
+  });
+
+  // Delegated handler for dynamically rendered feedback form
+  $(document).on('submit', '#feedback-form', function(e) {
+    e.preventDefault();
+    const rating = parseInt($('#rating').val());
+    const comment = $('#comment').val().trim();
+    if (!rating) return showToast('Please select a rating.', 'error');
+    const user = getUser();
+    const btn = $(this).find('button[type="submit"]');
+    btn.prop('disabled', true).text('Submitting…');
+    apiRequest('POST', '/event-feedback', { event_id: id, user_id: user.id, rating, comment })
+      .then(() => { showToast('Feedback submitted!'); this.reset(); loadFeedback(); btn.prop('disabled', false).text('Submit Feedback'); })
+      .catch(err => { showToast(err.message || 'Failed to submit feedback.', 'error'); btn.prop('disabled', false).text('Submit Feedback'); });
+  });
+
+  loadEvent();
+  renderFooter();
+</script>
+</body>
+</html>

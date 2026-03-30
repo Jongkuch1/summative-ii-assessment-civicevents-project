@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – Announcement Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-xl mx-auto px-4 py-8">
+  <a href="announcements.html" class="text-blue-600 text-sm hover:underline mb-4 inline-block">← Back</a>
+  <div class="bg-white rounded-xl shadow p-6">
+    <h1 id="form-title" class="text-xl font-bold text-gray-800 mb-6">Create Announcement</h1>
+    <form id="ann-form" novalidate class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="title">Title *</label>
+        <input id="title" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="audio">Audio File *</label>
+        <input id="audio" type="file" accept="audio/*" aria-label="Upload audio file"
+          class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+        <p class="text-xs text-gray-400 mt-1">MP3, OGG, WAV. Max 20MB.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="transcript">Transcript (optional)</label>
+        <textarea id="transcript" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Provide a text transcript for accessibility…"></textarea>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="published" type="checkbox" class="accent-blue-600 w-4 h-4"/>
+        <label for="published" class="text-sm text-gray-700">Published</label>
+      </div>
+      <div id="form-error" class="hidden text-red-600 text-sm bg-red-50 p-2 rounded-lg"></div>
+      <div class="flex gap-3">
+        <button type="submit" id="submit-btn" class="bg-blue-700 text-white px-6 py-2.5 rounded-lg hover:bg-blue-800 transition text-sm font-medium">Save</button>
+        <a href="announcements.html" class="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-200 transition text-sm font-medium">Cancel</a>
+      </div>
+    </form>
+  </div>
+</main>
+
+<div id="footer-container"></div>
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  requireAdmin(); // Role guard: admin only
+  renderNavbar();
+
+  const annId = new URLSearchParams(location.search).get('id');
+  if (annId) {
+    $('#form-title').text('Edit Announcement');
+    apiRequest('GET', `/announcements/${annId}`).then(data => {
+      const a = data.data || data;
+      $('#title').val(a.title);
+      $('#transcript').val(a.transcript || '');
+      $('#published').prop('checked', a.published);
+    });
+  }
+
+  $('#audio').on('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { showToast('Audio must be under 20MB.', 'error'); this.value = ''; }
+  });
+
+  $('#ann-form').on('submit', function(e) {
+    e.preventDefault();
+    const title = $('#title').val().trim();
+    const audioFile = $('#audio')[0].files[0];
+    if (!title) return $('#form-error').text('Title is required.').removeClass('hidden');
+    if (!annId && !audioFile) return $('#form-error').text('Audio file is required.').removeClass('hidden');
+    $('#form-error').addClass('hidden');
+    $('#submit-btn').prop('disabled', true).text('Saving…');
+
+    const fd = new FormData();
+    fd.append('title', title);
+    fd.append('transcript', $('#transcript').val());
+    fd.append('published', $('#published').is(':checked'));
+    if (audioFile) fd.append('audio', audioFile);
+
+    const method = annId ? 'PUT' : 'POST';
+    const endpoint = annId ? `/announcements/${annId}` : '/announcements';
+
+    apiRequest(method, endpoint, fd, true)
+      .then(() => {
+        showToast(annId ? 'Updated!' : 'Announcement created!');
+        setTimeout(() => window.location.href = 'announcements.html', 1000);
+      })
+      .catch(err => {
+        $('#form-error').text(err.message || 'Failed.').removeClass('hidden');
+        $('#submit-btn').prop('disabled', false).text('Save');
+      });
+  });
+  renderFooter();
+</script>
+</body>
+</html>

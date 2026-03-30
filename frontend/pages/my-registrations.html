@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicEvents – My Registrations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div id="navbar-container"></div>
+
+<main class="flex-1 max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold text-gray-800 mb-6">My Registrations</h1>
+  <div id="reg-list" class="space-y-4"></div>
+</main>
+
+<div id="footer-container"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/navbar.js"></script>
+<script>
+  requireAuth();
+  renderNavbar();
+
+  function loadRegistrations() {
+    $('#reg-list').html(skeletonCard(3));
+    apiRequest('GET', '/event-registrations/my-registrations').then(data => {
+      const regs = data.data || data || [];
+      if (!regs.length) {
+        $('#reg-list').html('<p class="text-gray-400 text-center py-12">You have no registrations yet. <a href="events.html" class="text-blue-600 hover:underline">Browse events</a></p>');
+        return;
+      }
+      const html = regs.map(r => {
+        const e = r.event || {};
+        return `
+        <article class="bg-white rounded-xl shadow p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex-1">
+            <h2 class="font-bold text-gray-800">${e.title || 'Event #' + r.event_id}</h2>
+            <p class="text-xs text-gray-500 mt-1">${formatDate(e.starts_at)}</p>
+            <p class="text-xs text-gray-500">${e.location || 'TBD'}</p>
+            <p class="text-xs text-gray-400 mt-1">Registered: ${formatDateShort(r.created_at)}</p>
+          </div>
+          <div class="flex gap-2">
+            <a href="event-detail.html?id=${r.event_id}" class="bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-800 transition">View Event</a>
+            <button class="cancel-reg bg-red-100 text-red-600 text-xs px-3 py-1.5 rounded-lg hover:bg-red-200 transition" data-id="${r.id}">Cancel</button>
+          </div>
+        </article>`;
+      }).join('');
+      $('#reg-list').html(html);
+
+      $('.cancel-reg').on('click', function() {
+        const id = $(this).data('id');
+        const btn = $(this);
+        confirmModal('Cancel this registration?', 'Yes, cancel', 'Keep it').then(confirmed => {
+          if (!confirmed) return;
+          btn.prop('disabled', true).text('Cancelling…');
+          apiRequest('DELETE', `/event-registrations/${id}`)
+            .then(() => { showToast('Registration cancelled.'); loadRegistrations(); })
+            .catch(err => { showToast(err.message, 'error'); loadRegistrations(); });
+        });
+      });
+    }).catch(err => {
+      $('#reg-list').html(`<p class="text-red-500">${err.message} <button onclick="loadRegistrations()" class="underline text-blue-600">Retry</button></p>`);
+    });
+  }
+
+  loadRegistrations();
+  renderFooter();
+</script>
+</body>
+</html>
