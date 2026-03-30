@@ -1,58 +1,115 @@
-# CivicEvents+
+# CivicEvents — Frontend
 
-CivicEvents+ is a full-stack civic engagement platform that connects residents with their local government. Citizens can browse and register for public events, read announcements, submit service requests, and manage their profiles. Administrators get a dedicated dashboard with analytics, user management, and content control tools.
+A civic engagement web platform that connects residents with their local government. Citizens can browse public events, listen to audio announcements, watch promotional videos, register for events, submit service requests, and leave feedback. Administrators have a dedicated dashboard with real-time charts to manage all content and users.
+
+---
+
+## Demo Video
+
+Watch the full demo on YouTube: [https://www.youtube.com/watch?v=hYP670bJFfc](https://www.youtube.com/watch?v=hYP670bJFfc)
 
 ---
 
 ## Table of Contents
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Environment Variables](#environment-variables)
-- [Setup Instructions](#setup-instructions)
-- [Available Scripts](#available-scripts)
-- [API Overview](#api-overview)
-- [Frontend Pages](#frontend-pages)
-- [Authentication & Roles](#authentication--roles)
-- [File Uploads](#file-uploads)
-- [Database](#database)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
-
----
-
-## Features
-
-- **User authentication** — JWT-based login/signup with bcrypt password hashing
-- **Role-based access control** — Separate citizen and admin roles with protected routes
-- **Events** — Browse, view details, register, and submit feedback on civic events
-- **Announcements** — Admin-published notices with detail pages for citizens
-- **Promos** — Create and publish promotional content with media attachments
-- **Notifications** — System notifications with detail view
-- **Service Requests** — Citizens submit requests; admins review and manage them
-- **File uploads** — Image, audio, and video support via multer
-- **Admin Dashboard** — Analytics, charts, user management, and content moderation
-- **Email support** — Nodemailer integration for transactional emails
-- **Postman Collection** — Included for API testing (`CivicEvents+ API.postman_collection.json`)
+1. [Tech Stack](#tech-stack)
+2. [Prerequisites](#prerequisites)
+3. [Getting Started](#getting-started)
+4. [Default Credentials](#default-credentials)
+5. [Project Structure](#project-structure)
+6. [API Reference](#api-reference)
+7. [Role-Based Access Control](#role-based-access-control)
+8. [File Upload Limits](#file-upload-limits)
+9. [Design System](#design-system)
+10. [Demo Checklist](#demo-checklist)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Tech Stack
 
-| Layer       | Technology                                      |
-|-------------|--------------------------------------------------|
-| Frontend    | HTML5, CSS3, JavaScript (ES6+), jQuery, Chart.js |
-| Backend     | Node.js (ESM), Express.js v5                    |
-| Database    | PostgreSQL 15+                                  |
-| Auth        | JSON Web Tokens (JWT), bcrypt                   |
-| Validation  | express-validator                               |
-| File Uploads| multer                                          |
-| Email       | nodemailer                                      |
-| Logging     | morgan                                          |
-| Dev         | nodemon, cross-env                              |
+| Layer | Technology |
+| --- | --- |
+| Frontend | HTML5, Tailwind CSS (CDN), jQuery 3.7, Chart.js 4 |
+| Backend | Node.js 18+, Express 4 |
+| Database | PostgreSQL 15+ |
+| Auth | JWT via jsonwebtoken, bcryptjs |
+| Uploads | multer (images, audio, video) |
+
+---
+
+## Prerequisites
+
+- **Node.js 18 or higher** — `node --version`
+- **PostgreSQL 15+** — running locally on port 5432
+- **npm** — bundled with Node.js
+- A modern browser (Chrome 90+, Firefox 88+, Safari 15+, Edge 90+)
+
+---
+
+## Getting Started
+
+### 1. Set up the database
+
+Make sure PostgreSQL is running:
+
+```bash
+brew services start postgresql@16
+```
+
+Create the database and tables (first time only):
+
+```bash
+psql -U postgres -c "CREATE DATABASE \"civic-events-db\";"
+psql -U postgres -d "civic-events-db" -f backend/migrations/001_create_tables.sql
+```
+
+### 2. Start the backend
+
+```bash
+cd backend
+npm install
+npm start
+```
+
+Expected output:
+
+```text
+CivicEvents+ backend listening on port 4000
+Connected to PostgreSQL
+```
+
+### 3. Open the frontend
+
+Open `frontend/pages/login.html` in your browser:
+
+```bash
+open frontend/pages/login.html
+```
+
+Or use VS Code Live Server — right-click `login.html` and select **Open with Live Server**.
+
+### 4. Verify the connection
+
+Sign in with the admin credentials below. If the dashboard loads with stats and both charts render, the backend is connected correctly.
+
+---
+
+## Default Credentials
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `jongkuch123@gmail.com` | `Password123@` |
+
+New accounts can be created from the Sign Up page.
+
+**Password policy** (enforced on both frontend and backend):
+
+- Minimum 8 characters
+- At least one uppercase letter (A–Z)
+- At least one lowercase letter (a–z)
+- At least one digit (0–9)
+- At least one special character (`!@#$%^&*`)
 
 ---
 
@@ -60,292 +117,261 @@ CivicEvents+ is a full-stack civic engagement platform that connects residents w
 
 ```text
 civic-events/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   └── db.js                  # PostgreSQL pool (reads from .env)
-│   │   ├── controllers/               # Request/response handlers per resource
-│   │   ├── middlewares/               # Auth, error handling, validation middleware
-│   │   ├── models/                    # Database query functions
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js
-│   │   │   ├── events.routes.js
-│   │   │   ├── eventRegistrations.routes.js
-│   │   │   ├── eventFeedback.routes.js
-│   │   │   ├── announcements.routes.js
-│   │   │   ├── promos.routes.js
-│   │   │   ├── notifications.routes.js
-│   │   │   ├── users.routes.js
-│   │   │   ├── dashboard.routes.js
-│   │   │   └── index.routes.js        # Route aggregator
-│   │   ├── services/                  # Business logic layer
-│   │   └── utils/                     # Helper utilities
+├── backend/                         # Express API (do not modify)
+│   ├── server.js
+│   ├── app.js
+│   ├── .env
 │   ├── migrations/
-│   │   ├── 001_create_tables.sql      # Schema creation
-│   │   └── 002_seed_data.sql          # Optional seed data
-│   ├── uploads/                       # Persisted uploaded files
-│   ├── app.js                         # Express app setup
-│   ├── server.js                      # Server entry point
-│   ├── package.json
-│   └── CivicEvents+ API.postman_collection.json
-└── frontend/
-    ├── index.html                     # Landing / home page
-    ├── css/                           # Stylesheets
+│   │   └── 001_create_tables.sql
+│   └── src/
+│       ├── config/db.js
+│       ├── controllers/
+│       ├── middlewares/
+│       ├── models/
+│       ├── routes/
+│       └── services/
+│
+└── frontend/                        # Your frontend (this folder)
+    ├── index.html                   # Public landing page
+    ├── README.md                    # This file
+    ├── css/
+    │   └── style.css                # Design system: variables, animations
     ├── js/
-    │   ├── config.js                  # API base URL config
-    │   ├── navbar.js                  # Shared navigation logic
-    │   └── utils.js                   # Shared helper functions
+    │   ├── config.js                # BASE_URL = http://localhost:4000
+    │   ├── utils.js                 # Auth helpers, apiRequest(), toasts, modals
+    │   └── navbar.js                # Shared navbar, notification drawer
     └── pages/
-        ├── login.html
-        ├── signup.html
-        ├── events.html
-        ├── event-detail.html
-        ├── event-form.html
-        ├── announcements.html
-        ├── announcement-detail.html
-        ├── announcement-form.html
-        ├── promos.html
-        ├── promo-detail.html
-        ├── promo-form.html
-        ├── notifications.html
-        ├── notification-detail.html
-        ├── notification-form.html
-        ├── service-requests.html
-        ├── service-request-detail.html
-        ├── service-request-form.html
-        ├── my-registrations.html
-        ├── profile.html
-        ├── users.html
-        ├── user-detail.html
-        └── dashboard.html
+        ├── login.html               # Login (remember-me, password toggle)
+        ├── signup.html              # Signup (password strength meter)
+        ├── events.html              # Event list — search, filter, pagination
+        ├── event-detail.html        # Detail, register, feedback
+        ├── event-form.html          # Admin: create/edit event + image upload
+        ├── announcements.html       # Announcement list
+        ├── announcement-detail.html # Audio player + transcript
+        ├── announcement-form.html   # Admin: create/edit + audio upload
+        ├── promos.html              # Promo list
+        ├── promo-detail.html        # Video player + captions
+        ├── promo-form.html          # Admin: create/edit + video upload (100 MB)
+        ├── service-requests.html    # List with status filter
+        ├── service-request-form.html# Submit service request
+        ├── service-request-detail.html # Detail + admin status update
+        ├── dashboard.html           # Admin: stat cards + charts + activity feed
+        ├── users.html               # Admin: user list + enable/disable
+        ├── notification-form.html   # Admin: broadcast + manage notifications
+        ├── notification-detail.html # Notification detail
+        ├── my-registrations.html    # My event registrations
+        └── profile.html             # Edit profile + change password
 ```
 
 ---
 
-## Prerequisites
+## API Reference
 
-- [Node.js](https://nodejs.org/) v18 or higher
-- [PostgreSQL](https://www.postgresql.org/) v15 or higher
-- npm v9+
+**Base URL:** `http://localhost:4000/api`
 
----
+All protected routes require:
 
-## Environment Variables
-
-Create a `.env` file in the `backend/` directory with the following variables:
-
-```env
-# Database
-DB_USER=your_postgres_username
-DB_HOST=localhost
-DB_NAME=civic_events_db
-DB_PASS=your_postgres_password
-DB_PORT=5432
-
-# JWT
-JWT_SECRET=your_jwt_secret_key
-
-# Email (optional — for nodemailer)
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your_email@example.com
-SMTP_PASS=your_email_password
-
-# Server
-PORT=3000
+```http
+Authorization: Bearer <jwt_token>
 ```
 
-> Never commit your `.env` file. It is already listed in `.gitignore`.
+### Authentication
+
+| Method | Endpoint | Auth | Body |
+| --- | --- | --- | --- |
+| POST | `/auth/signup` | Public | `{ full_name, email, password }` |
+| POST | `/auth/login` | Public | `{ email, password }` |
+
+### Events
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/events` | User | List events (admin sees drafts too) |
+| POST | `/events` | Admin | Create — `multipart/form-data` with `image` field |
+| GET | `/events/:id` | User | Single event |
+| PUT | `/events/:id` | Admin | Update |
+| DELETE | `/events/:id` | Admin | Delete |
+| GET | `/events/:id/feedback` | User | Feedback list |
+| POST | `/event-feedback` | User | Submit feedback |
+
+### Event Registrations
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/event-registrations` | User | Register: `{ user_id, event_id }` |
+| GET | `/event-registrations/my-registrations` | User | My registrations |
+| GET | `/event-registrations/event/:id` | Admin | All registrants for an event |
+| DELETE | `/event-registrations/:id` | User | Cancel registration |
+
+### Announcements
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/announcements` | User | List |
+| POST | `/announcements` | Admin | Create — `multipart/form-data` with `audio` field |
+| GET | `/announcements/:id` | User | Single announcement |
+| PUT | `/announcements/:id` | Admin | Update |
+| DELETE | `/announcements/:id` | Admin | Delete |
+
+### Promos
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/promos` | User | List |
+| POST | `/promos` | Admin | Create — `multipart/form-data` with `video` field |
+| GET | `/promos/:id` | User | Single promo |
+| PUT | `/promos/:id` | Admin | Update |
+| DELETE | `/promos/:id` | Admin | Delete |
+
+### Notifications
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/notifications` | User | List notifications |
+| POST | `/notifications` | Admin | Broadcast `{ title, message }` |
+| PATCH | `/notifications/:id` | User | Mark as read `{ is_read: true }` |
+| DELETE | `/notifications/:id` | Admin | Delete |
+
+### Service Requests
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/service-requests` | User/Admin | List (own or all) |
+| POST | `/service-requests` | User | Submit `{ title, category, description }` |
+| GET | `/service-requests/:id` | User/Admin | Single request |
+| PATCH | `/service-requests/:id` | Admin | Update status |
+| DELETE | `/service-requests/:id` | User/Admin | Delete |
+
+### Users
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/users` | Admin | List all users |
+| GET | `/users/:id` | User/Admin | Profile |
+| PUT | `/users/:id` | User/Admin | Update `{ full_name, email }` |
+| PATCH | `/users/:id/enable` | Admin | Enable account |
+| PATCH | `/users/:id/disable` | Admin | Disable account |
+
+### Dashboard
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/dashboard/admin` | Admin | Stats: users, events, promos, registrations, feedback |
 
 ---
 
-## Setup Instructions
+## Role-Based Access Control
 
-### 1. Clone the Repository
+| Feature | User | Admin |
+| --- | :---: | :---: |
+| Browse published events, announcements, promos | ✅ | ✅ |
+| View unpublished (draft) content | — | ✅ |
+| Register / cancel event registration | ✅ | — |
+| Submit event feedback (once per event) | ✅ | — |
+| Submit service requests | ✅ | ✅ |
+| Create / edit / delete content | — | ✅ |
+| Upload images, audio, video | — | ✅ |
+| View all users | — | ✅ |
+| Enable / disable user accounts | — | ✅ |
+| Broadcast notifications | — | ✅ |
+| View admin dashboard + charts | — | ✅ |
+| Edit own profile + change password | ✅ | ✅ |
+
+**How guards are enforced:**
+
+- **Backend:** Every protected route uses `authenticate` middleware (verifies JWT). Admin routes use `authorize(['admin'])` middleware.
+- **Frontend:** Every authenticated page calls `requireAuth()` on load. Admin pages also call `requireAdmin()`. UI elements (edit/delete buttons, admin sidebar) are conditionally shown using `isAdmin()`.
+
+---
+
+## File Upload Limits
+
+| Content | Field | Max Size | Formats |
+| --- | --- | --- | --- |
+| Event image | `image` | 5 MB | JPEG, PNG, WebP |
+| Announcement audio | `audio` | 20 MB | MP3, OGG, WAV, M4A |
+| Promo video | `video` | 100 MB | MP4, WebM, MOV |
+
+Uploaded files are served from `backend/uploads/` at `http://localhost:4000/uploads/`.
+
+---
+
+## Design System
+
+Custom CSS variables defined in `css/style.css`:
+
+| Token | Value | Usage |
+| --- | --- | --- |
+| `--civic-indigo` | `#4f46e5` | Primary actions, links |
+| `--civic-violet` | `#7c3aed` | Gradient accent |
+| `--civic-sky` | `#0ea5e9` | Secondary highlights |
+| `--civic-slate` | `#1e293b` | Body text |
+
+Key utility classes:
+
+| Class | Description |
+| --- | --- |
+| `.btn-gradient` | Indigo→Violet gradient button |
+| `.skeleton` | Shimmer loading placeholder |
+| `.civic-toast` | Stacked dismissible toast notification |
+| `.app-nav` | Sticky white navbar for inner pages |
+
+---
+
+## Demo Checklist
+
+Use this before recording your demo video:
+
+- [ ] Sign up as a new user; verify password strength meter and policy enforcement
+- [ ] Log in (admin) — dashboard loads with real stats and both charts
+- [ ] Log in (user) — redirected to events page
+- [ ] Events: admin creates event with image upload; user registers and cancels
+- [ ] Event feedback: user submits rating; duplicate blocked on second attempt
+- [ ] Announcements: admin uploads audio; user plays it and sees duration
+- [ ] Promos: admin uploads video; user plays it with captions
+- [ ] Service requests: user submits; admin updates status
+- [ ] Notifications: admin broadcasts; user sees badge, opens drawer, marks as read
+- [ ] Profile: update name/email; change password
+- [ ] User management: admin enables/disables a user
+- [ ] Responsive layout shown on mobile width
+- [ ] Keyboard navigation works on major pages
+
+---
+
+## Troubleshooting
+
+### Backend fails to start
+
+Check PostgreSQL is running:
 
 ```bash
-git clone https://github.com/Jongkuch1/summative-ii-assessment-civicevents-project.git
-cd summative-ii-assessment-civicevents-project
+brew services list | grep postgresql
 ```
 
-### 2. Backend Setup
+If not running:
 
 ```bash
-cd backend
-npm install
+brew services start postgresql@16
 ```
 
-Create your `.env` file as described in [Environment Variables](#environment-variables).
-
-### 3. Database Setup
-
-Create the PostgreSQL database:
+### Port already in use
 
 ```bash
-createdb civic_events_db
+lsof -i :4000
+kill -9 <PID>
 ```
 
-Run the schema migration:
+### Frontend shows "Unable to connect to server"
 
-```bash
-npm run db:setup
-```
+- Confirm backend is running on port 4000
+- Check `js/config.js` — `BASE_URL` must be `http://localhost:4000`
 
-Optionally seed with sample data:
+### Login works but protected requests fail
 
-```bash
-npm run db:seed
-```
+- Check browser localStorage for `token` and `user` keys
+- If token expired, log out and log in again
 
-Or run both at once:
+### Media not loading
 
-```bash
-npm run db:reset
-```
-
-### 4. Start the Backend
-
-**Development (auto-reload with nodemon):**
-
-```bash
-npm run dev
-```
-
-**Production:**
-
-```bash
-npm start
-```
-
-The API will be available at `http://localhost:3000` (or the `PORT` set in `.env`).
-
-### 5. Frontend Setup
-
-No build step is required. Open `frontend/index.html` directly in your browser, or serve it with a static file server:
-
-```bash
-# Using the VS Code Live Server extension, or:
-npx serve frontend
-```
-
-If your backend runs on a port other than `3000`, update the API base URL in [frontend/js/config.js](frontend/js/config.js).
-
----
-
-## Available Scripts
-
-All scripts are run from the `backend/` directory:
-
-| Script          | Description                                      |
-|-----------------|--------------------------------------------------|
-| `npm start`     | Start the server in production mode              |
-| `npm run dev`   | Start the server with nodemon (hot reload)       |
-| `npm run db:setup` | Run schema migration (`001_create_tables.sql`) |
-| `npm run db:seed`  | Run seed data migration (`002_seed_data.sql`)  |
-| `npm run db:reset` | Run both setup and seed in sequence            |
-
----
-
-## API Overview
-
-All API routes are prefixed with `/api`. A full Postman collection is included at `backend/CivicEvents+ API.postman_collection.json` — import it into Postman to explore and test every endpoint.
-
-| Resource              | Base Route                     |
-|-----------------------|--------------------------------|
-| Authentication        | `/api/auth`                    |
-| Events                | `/api/events`                  |
-| Event Registrations   | `/api/event-registrations`     |
-| Event Feedback        | `/api/event-feedback`          |
-| Announcements         | `/api/announcements`           |
-| Promos                | `/api/promos`                  |
-| Notifications         | `/api/notifications`           |
-| Service Requests      | `/api/service-requests`        |
-| Users                 | `/api/users`                   |
-| Dashboard / Analytics | `/api/dashboard`               |
-
----
-
-## Frontend Pages
-
-| Page                         | Description                                         |
-|------------------------------|-----------------------------------------------------|
-| `index.html`                 | Home / landing page                                 |
-| `pages/login.html`           | User login                                          |
-| `pages/signup.html`          | New user registration                               |
-| `pages/events.html`          | Browse all civic events                             |
-| `pages/event-detail.html`    | Event details and registration                      |
-| `pages/event-form.html`      | Create / edit an event (admin)                      |
-| `pages/announcements.html`   | Browse announcements                                |
-| `pages/announcement-form.html` | Create / edit an announcement (admin)             |
-| `pages/promos.html`          | Browse promotional content                          |
-| `pages/promo-form.html`      | Create / edit a promo (admin)                       |
-| `pages/service-requests.html`| View submitted service requests                     |
-| `pages/service-request-form.html` | Submit a new service request (citizen)         |
-| `pages/my-registrations.html`| View your event registrations                       |
-| `pages/profile.html`         | View and edit your profile                          |
-| `pages/users.html`           | User management list (admin)                        |
-| `pages/dashboard.html`       | Admin analytics dashboard                           |
-
----
-
-## Authentication & Roles
-
-Authentication uses **JWT** tokens sent via the `Authorization: Bearer <token>` header.
-
-| Role    | Permissions                                                                 |
-|---------|-----------------------------------------------------------------------------|
-| Citizen | Register, log in, view/register for events, submit service requests, manage own profile |
-| Admin   | All citizen permissions + create/edit/delete events, announcements, promos, notifications, manage users, view dashboard analytics |
-
-Tokens are validated by the auth middleware on all protected routes. Role checks are enforced per route.
-
----
-
-## File Uploads
-
-Uploaded files (images, audio, video) are handled by **multer** and stored in `backend/uploads/`. Uploaded file paths are saved to the database and served statically by Express.
-
-Supported types: images (JPEG, PNG, GIF, WebP), audio (MP3, WAV), video (MP4, WebM).
-
----
-
-## Database
-
-The schema is defined in `backend/migrations/001_create_tables.sql`. Key tables include:
-
-- `users` — citizen and admin accounts
-- `events` — civic events with date, location, and media
-- `event_registrations` — user-event registration records
-- `event_feedback` — post-event ratings and comments
-- `announcements` — admin-published notices
-- `promos` — promotional content with media
-- `notifications` — system notifications
-- `service_requests` — citizen-submitted service requests
-
-Connection pooling is managed by the `pg` library. Configuration is read entirely from environment variables — no hardcoded credentials.
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m "Add your feature"`
-4. Push to your fork: `git push origin feature/your-feature-name`
-5. Open a Pull Request against `main`
-
-Please keep PRs focused and include a clear description of the change and its motivation.
-
----
-
-## License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Contact
-
-Maintainer: [Jongkuch1](https://github.com/Jongkuch1)
-For questions, bugs, or feature requests, please [open an issue](https://github.com/summative-ii-assessment-civicevents-project-Jongkuch1
-).
+- Confirm files exist under `backend/uploads/`
+- Verify the URL: `http://localhost:4000/uploads/events/<filename>`
